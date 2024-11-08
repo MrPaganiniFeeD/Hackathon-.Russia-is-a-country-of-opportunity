@@ -32,8 +32,7 @@ def np_array_to_base64(np_array):
 def run_and_clean(func, video_path, task_id):
     try:
         results = func(video_path)
-        text_data = results.get("text")
-        images = results.get("images", [])
+        text_data, images = results
 
         # Кодируем изображения в base64
         base64_images = [np_array_to_base64(img) for img in images]
