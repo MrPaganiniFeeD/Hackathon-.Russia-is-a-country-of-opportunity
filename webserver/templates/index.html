@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Загрузка видео</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">Детекция нарушений ПДД</h2>
+
+        {% if message %}
+            <div class="mb-4 p-4 rounded-lg {{ 'bg-green-100 text-green-700' if message.success else 'bg-red-100 text-red-700' }}">
+                {{ message.message }}
+            </div>
+
+            {% if message.success %}
+                <div id="results" class="text-gray-700 mt-4">
+                    Обработка видео...
+                </div>
+
+                <script>
+                    // Функция для проверки статуса задачи
+                    function checkResults(taskId) {
+                        fetch(`/get-results/${taskId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                const resultsDiv = document.getElementById("results");
+                                if (data.status === "completed") {
+                                    resultsDiv.innerHTML = "<strong>Результаты:</strong> " + JSON.stringify(data.results);
+                                } else if (data.status === "error") {
+                                    resultsDiv.innerHTML = "<strong>Ошибка:</strong> " + data.results;
+                                } else {
+                                    setTimeout(() => checkResults(taskId), 2000);  // Повторная проверка через 2 секунды
+                                }
+                            })
+                            .catch(error => console.error("Ошибка при получении результатов:", error));
+                    }
+
+                    // Запуск проверки, если task_id доступен
+                    {% if message.task_id %}
+                        checkResults("{{ message.task_id }}");
+                    {% endif %}
+                </script>
+            {% endif %}
+        {% endif %}
+
+        <form action="/upload-video" method="post" enctype="multipart/form-data" class="flex flex-col space-y-4 mt-4">
+            <input
+                type="file"
+                name="video"
+                required
+                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+
+            <button
+                type="submit"
+                class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+            >
+                Загрузить и обработать видео
+            </button>
+        </form>
+    </div>
+</body>
+</html>
