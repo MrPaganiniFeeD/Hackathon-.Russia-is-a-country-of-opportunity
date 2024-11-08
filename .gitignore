@@ -6,3 +6,6 @@ uploads
 videos
 logs
 *.pt
+
+*.mp4
+*.avi

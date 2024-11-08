@@ -6,7 +6,8 @@ video_path = (r"D:\code\hackathons\train РЖД ПДД\Hackathon-.Russia-is-a-co
 output_path = 'processed_video'
 CHOSEN_FORMAT = "mp4"
 
-model = YOLO("yolo11n.pt")
+# model = YOLO("yolo11n-seg.pt")  # Определяет объект строя полигон вокруг его границ и возвращает N координат
+model = YOLO("yolo11n.pt")  # Определяет объект вписывая объект в прямоугольник и возвращает 4 координаты
 
 cap = cv2.VideoCapture(video_path)
 
