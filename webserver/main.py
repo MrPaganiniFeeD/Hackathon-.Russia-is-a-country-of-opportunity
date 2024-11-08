@@ -2,14 +2,17 @@ import os
 import threading
 import time
 from pathlib import Path
+
 import werkzeug
 from flask import Flask, request, render_template, jsonify
 from loguru import logger
+
 from baseline import detection_task
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = Path("./uploads")
+ROOT_DIR = Path(__file__).parent.parent.resolve()
+UPLOAD_FOLDER = ROOT_DIR / "uploads"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 
 # Глобальный словарь для хранения результатов обработки
