@@ -310,7 +310,7 @@ def main_analise(video_path, frames_to_take=50, show=False, debug_sec=[]):
     duration = count_frame // fps  # Длительность видео в секундах
     freq = max(1, count_frame // frames_to_take)  # Частота выборки кадров (не менее 1)
     print(f"Частота выборки кадров: {freq}")
-    success, frame = cap.read()  # Читаем первый кадр
+    success, frame = cap.read()# Читаем первый кадр
     count = 0  # Счетчик кадров
     # Инициализируем tqdm для отслеживания прогресса
     with tqdm(total=count_frame // freq, desc="Processing frames") as pbar:
@@ -321,6 +321,7 @@ def main_analise(video_path, frames_to_take=50, show=False, debug_sec=[]):
                     show = True  # Включаем отображение, если текущая секунда в списке отладки
                 # Обрабатываем кадр (преобразуем цветовую схему)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
                 if show:
                     plt.imshow(frame)  # Отображаем текущий кадр
                     plt.title("Current Frame")
@@ -365,6 +366,7 @@ def main_analise(video_path, frames_to_take=50, show=False, debug_sec=[]):
 # Для ускорения работы алгоритма можете попробовать :
 # 1. Уменьшить разрешение кадров.
 #
+
 
 if __name__ == '__main__':
     print("Hello World")
