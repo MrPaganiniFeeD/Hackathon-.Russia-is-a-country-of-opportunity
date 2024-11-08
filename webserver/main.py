@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 import werkzeug
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template
 from loguru import logger
 
 from baseline import detection_task
@@ -21,7 +21,7 @@ processing_results = {}
 
 def run_and_clean(func, video_path, task_id):
     try:
-        results = func(video_path)  # Запускаем задачу и сохраняем результаты
+        results = func(video_path)
         processing_results[task_id] = {"status": "completed", "results": results}
         logger.info(f"Завершена обработка видео: {video_path}")
     except Exception as e:
@@ -40,7 +40,6 @@ def upload_form():
     return render_template("index.html")
 
 
-# Маршрут для загрузки и обработки видео
 @app.route("/upload-video", methods=["POST"])
 def upload_video():
     logger.info("Запрос на обработку видео")
@@ -65,11 +64,9 @@ def upload_video():
     video_path = UPLOAD_FOLDER / filename
     file.save(video_path)
 
-    # Уникальный ID для задачи
     task_id = filename + time.strftime("%Y%m%d%H%M%S")
     processing_results[task_id] = {"status": "processing", "results": None}
 
-    # Запускаем задачу в отдельном потоке
     task_thread = threading.Thread(
         target=run_and_clean, args=(detection_task, video_path, task_id)
     )
@@ -79,13 +76,6 @@ def upload_video():
         "index.html",
         message={"success": True, "message": "Видео загружено. Обработка начата.", "task_id": task_id},
     )
-
-
-# Маршрут для получения статуса и результата задачи
-@app.route("/get-results/<task_id>")
-def get_results(task_id):
-    result = processing_results.get(task_id, {"status": "not_found", "results": None})
-    return jsonify(result)
 
 
 if __name__ == "__main__":
