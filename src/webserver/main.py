@@ -1,9 +1,12 @@
+import base64
 import os
 import threading
 import time
+from io import BytesIO
 from pathlib import Path
 
 import werkzeug
+from PIL import Image
 from flask import Flask, request, render_template, jsonify
 from loguru import logger
 
@@ -18,10 +21,32 @@ UPLOAD_FOLDER.mkdir(exist_ok=True)
 processing_results = {}
 
 
+def np_array_to_base64(np_array):
+    img = Image.fromarray(np_array)
+    buffer = BytesIO()
+    img.save(buffer, format="JPEG", quality=70)
+    buffer.seek(0)
+    return base64.b64encode(buffer.read()).decode("utf-8")
+
+
 def run_and_clean(func, video_path, task_id):
     try:
         results = func(video_path)
-        processing_results[task_id] = {"status": "completed", "results": results}
+        text_data = results.get("text")
+        images = results.get("images", [])
+
+        # Кодируем изображения в base64
+        base64_images = [np_array_to_base64(img) for img in images]
+
+        # Сохраняем текст и изображения
+        processing_results[task_id] = {
+            "status": "completed",
+            "results": {
+                "text": text_data,
+                "images": base64_images
+            }
+        }
+
         logger.info(f"Завершена обработка видео: {video_path}")
     except Exception as e:
         processing_results[task_id] = {"status": "error", "results": str(e)}
@@ -53,17 +78,39 @@ def upload_video():
     mimetype = file.content_type
     logger.debug(f"{file}: {mimetype}")
 
-    if mimetype not in ["video/mp4", "video/webm", "video/quicktime"]:
+    # Проверка допустимых форматов и размера файла (например, до 100 МБ)
+    allowed_types = ["video/mp4", "video/webm", "video/quicktime"]
+    if mimetype not in allowed_types:
         return render_template(
             "index.html",
             message={"success": False, "message": "Ошибка: Неподдерживаемый тип видео."},
         )
 
+    if file.content_length > 100 * 1024 * 1024:  # Ограничение 100 МБ
+        return render_template(
+            "index.html",
+            message={"success": False, "message": "Ошибка: Файл слишком большой."},
+        )
+
     filename = werkzeug.utils.secure_filename(file.filename)
     video_path = UPLOAD_FOLDER / filename
-    file.save(video_path)
 
     task_id = filename + time.strftime("%Y%m%d%H%M%S")
+    if processing_results.get(task_id):
+        return render_template(
+            "index.html",
+            message={"success": False, "message": "Ошибка: Видео уже обрабатывается."},
+        )
+
+    try:
+        file.save(video_path)
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении файла: {e}")
+        return render_template(
+            "index.html",
+            message={"success": False, "message": "Ошибка при сохранении видео."},
+        )
+
     processing_results[task_id] = {"status": "processing", "results": None}
 
     task_thread = threading.Thread(

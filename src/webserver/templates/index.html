@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Загрузка видео</title>
+    <title>Детекция нарушений ПДД</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -27,7 +27,13 @@
                             .then(data => {
                                 const resultsDiv = document.getElementById("results");
                                 if (data.status === "completed") {
-                                    resultsDiv.innerHTML = "<strong>Результаты:</strong> " + JSON.stringify(data.results);
+                                    const { text, images } = data.results;
+                                    resultsDiv.innerHTML = `
+                                        <strong>Результаты:</strong>
+                                        <p>${text}</p>
+                                        <div class="mt-4 grid grid-cols-1 gap-4">
+                                            ${images.map(img => `<img src="data:image/jpeg;base64,${img}" class="w-full h-auto rounded-lg shadow">`).join("")}
+                                        </div>`;
                                 } else if (data.status === "error") {
                                     resultsDiv.innerHTML = "<strong>Ошибка:</strong> " + data.results;
                                 } else {
