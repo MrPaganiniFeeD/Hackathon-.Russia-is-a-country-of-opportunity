@@ -1,0 +1,6 @@
+opencv-python
+matplotlib
+tqdm
+numpy
+loguru
+flask

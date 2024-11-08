@@ -21,7 +21,6 @@
                 </div>
 
                 <script>
-                    // Функция для проверки статуса задачи
                     function checkResults(taskId) {
                         fetch(`/get-results/${taskId}`)
                             .then(response => response.json())
@@ -32,13 +31,12 @@
                                 } else if (data.status === "error") {
                                     resultsDiv.innerHTML = "<strong>Ошибка:</strong> " + data.results;
                                 } else {
-                                    setTimeout(() => checkResults(taskId), 2000);  // Повторная проверка через 2 секунды
+                                    setTimeout(() => checkResults(taskId), 2000);
                                 }
                             })
                             .catch(error => console.error("Ошибка при получении результатов:", error));
                     }
 
-                    // Запуск проверки, если task_id доступен
                     {% if message.task_id %}
                         checkResults("{{ message.task_id }}");
                     {% endif %}

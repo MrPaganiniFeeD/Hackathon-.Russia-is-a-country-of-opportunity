@@ -4,10 +4,10 @@ import time
 from pathlib import Path
 
 import werkzeug
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 from loguru import logger
 
-from baseline import detection_task
+from src.detection.main import detection_task
 
 app = Flask(__name__)
 
@@ -15,7 +15,6 @@ ROOT_DIR = Path(__file__).parent.parent.resolve()
 UPLOAD_FOLDER = ROOT_DIR / "uploads"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 
-# Глобальный словарь для хранения результатов обработки
 processing_results = {}
 
 
@@ -78,5 +77,7 @@ def upload_video():
     )
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+@app.route("/get-results/<task_id>")
+def get_results(task_id):
+    result = processing_results.get(task_id, {"status": "not_found", "results": None})
+    return jsonify(result)
