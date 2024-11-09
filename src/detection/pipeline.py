@@ -1,9 +1,9 @@
 import csv
-from multiprocessing import Pool, cpu_count
 import os.path
+import subprocess
+from multiprocessing import Pool, cpu_count
 from os import PathLike
 from pathlib import Path
-import subprocess
 from typing import List, Tuple, Any
 
 import cv2
@@ -15,7 +15,7 @@ from structures import Violation
 
 
 def bird_eye_view(
-    image: np.ndarray, src_points: List[np.ndarray], dst_points: List[np.ndarray]
+        image: np.ndarray, src_points: List[np.ndarray], dst_points: List[np.ndarray]
 ) -> np.ndarray:
     src_points = np.array(src_points, dtype=np.float32)
     dst_points = np.array(dst_points, dtype=np.float32)
@@ -58,16 +58,11 @@ def traffic_light_detection(frame: np.ndarray) -> None:
     pass
 
 
-def downscale(frame: np.ndarray, scale_factor: float) -> np.ndarray:
-    return cv2.resize(frame, None, fx=scale_factor, fy=scale_factor)
-
-
 def pipeline(frame: np.ndarray, model: YOLO) -> Tuple[np.ndarray, List[Violation]]:
     violations: List[Violation] = []
     h, w = frame.shape[:2]
 
-    # frame = downscale(frame, 0.6)
-    # original_frame = frame.copy()
+    original_frame = frame.copy()
 
     objs = yolo_obj_extraction(model, frame, verbose=False)
 
@@ -77,6 +72,10 @@ def pipeline(frame: np.ndarray, model: YOLO) -> Tuple[np.ndarray, List[Violation
     dst_points = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype=np.float32)
 
     bird_eye_view_image = bird_eye_view(frame, src_points, dst_points)
+
+    # TODO
+    # traffic_light_detection(bird_eye_view_image)
+    # lane_detection(bird_eye_view_image)
 
     cv2.polylines(
         frame, [np.int32(src_points)], isClosed=True, color=(0, 255, 0), thickness=2
@@ -109,7 +108,7 @@ def append_to_submission(vns: List[Violation], csv_path: PathLike) -> None:
 
 
 def main_loop(
-    vid_path: str, sub_path: str, offset: int, frames_to_process: int
+        vid_path: str, sub_path: str, offset: int, frames_to_process: int
 ) -> None:
     if not os.path.exists(vid_path):
         raise FileNotFoundError(vid_path)
@@ -235,7 +234,7 @@ def schedule_tasks(video_path: str, submission_path: str, num_cpus: int) -> None
 
     with Pool(num_cpus) as pool:
         pool.map(process_video_chunk, args)
-    
+
     concat_tmp_files(temp_files)
 
 

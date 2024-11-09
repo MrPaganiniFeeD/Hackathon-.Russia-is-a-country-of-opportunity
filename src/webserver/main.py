@@ -45,6 +45,9 @@ def run_and_clean(func, video_path, task_id):
             "results": {"text": text_data, "images": base64_images},
         }
 
+        # масштабирование
+        # как реализовано то или иное требование
+
         logger.info(f"Завершена обработка видео: {video_path}")
     except Exception as e:
         processing_results[task_id] = {"status": "error", "results": str(e)}
