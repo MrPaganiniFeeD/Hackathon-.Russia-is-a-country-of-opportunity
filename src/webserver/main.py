@@ -1,14 +1,16 @@
 import base64
 import os
+import random
 import threading
 import time
 from io import BytesIO
 from pathlib import Path
 
-import werkzeug
+import numpy as np
 from PIL import Image
 from flask import Flask, request, render_template, jsonify
 from loguru import logger
+import werkzeug
 
 from src.detection.main import detection_task
 
@@ -40,10 +42,7 @@ def run_and_clean(func, video_path, task_id):
         # Сохраняем текст и изображения
         processing_results[task_id] = {
             "status": "completed",
-            "results": {
-                "text": text_data,
-                "images": base64_images
-            }
+            "results": {"text": text_data, "images": base64_images},
         }
 
         logger.info(f"Завершена обработка видео: {video_path}")
@@ -56,6 +55,36 @@ def run_and_clean(func, video_path, task_id):
             logger.info(f"Файл {video_path} удален после обработки.")
         except OSError as e:
             logger.error(f"Ошибка при удалении файла {video_path}: {e}")
+
+
+def generate_random_image(width=100, height=100):
+    """Generate a random image for testing purposes."""
+    random_array = np.random.randint(
+        0, 256, (height, width, 3), dtype=np.uint8
+    )
+    image = Image.fromarray(random_array)
+    return image
+
+
+@app.route("/mock-results/<task_id>")
+def mock_results(task_id):
+    """Return random images as results for the template."""
+    images = [generate_random_image(width=640, height=384) for _ in range(5)]
+    base64_images = [np_array_to_base64(np.array(img)) for img in images]
+
+    processing_results[task_id] = {
+        "status": "completed",
+        "results": {"text": "Hello world!", "images": base64_images},
+    }
+
+    return render_template(
+        "index.html",
+        message={
+            "success": True,
+            "message": "Видео загружено. Обработка начата.",
+            "task_id": task_id,
+        },
+    )
 
 
 @app.route("/")
@@ -82,7 +111,10 @@ def upload_video():
     if mimetype not in allowed_types:
         return render_template(
             "index.html",
-            message={"success": False, "message": "Ошибка: Неподдерживаемый тип видео."},
+            message={
+                "success": False,
+                "message": "Ошибка: Неподдерживаемый тип видео.",
+            },
         )
 
     if file.content_length > 100 * 1024 * 1024:  # Ограничение 100 МБ
@@ -119,7 +151,11 @@ def upload_video():
 
     return render_template(
         "index.html",
-        message={"success": True, "message": "Видео загружено. Обработка начата.", "task_id": task_id},
+        message={
+            "success": True,
+            "message": "Видео загружено. Обработка начата.",
+            "task_id": task_id,
+        },
     )
 
 
