@@ -1,3 +1,4 @@
+ultralytics
 opencv-contrib-python
 matplotlib
 tqdm

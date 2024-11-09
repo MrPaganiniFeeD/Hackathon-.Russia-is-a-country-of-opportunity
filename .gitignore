@@ -9,3 +9,5 @@ logs
 
 *.mp4
 *.avi
+
+temp_file_list.txt

@@ -1,70 +1,133 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Детекция нарушений ПДД</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">Детекция нарушений ПДД</h2>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Детекция нарушений ПДД</title>
+        <link
+            href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+            rel="stylesheet"
+        />
+    </head>
+    <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+        <div id="container" class="bg-white shadow-lg rounded-lg p-8 w-full max-w-4xl">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">
+                Детекция нарушений ПДД
+            </h2>
 
-        {% if message %}
-            <div class="mb-4 p-4 rounded-lg {{ 'bg-green-100 text-green-700' if message.success else 'bg-red-100 text-red-700' }}">
+            {% if message %}
+            <div
+                class="mb-4 p-4 rounded-lg {{ 'bg-green-100 text-green-700' if message.success else 'bg-red-100 text-red-700' }}"
+            >
                 {{ message.message }}
             </div>
 
             {% if message.success %}
-                <div id="results" class="text-gray-700 mt-4">
-                    Обработка видео...
-                </div>
+            <div id="results" class="text-gray-700 mt-4">
+                Обработка видео, пожалуйста, подождите...
+            </div>
 
-                <script>
-                    function checkResults(taskId) {
-                        fetch(`/get-results/${taskId}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                const resultsDiv = document.getElementById("results");
-                                if (data.status === "completed") {
-                                    const { text, images } = data.results;
-                                    resultsDiv.innerHTML = `
-                                        <strong>Результаты:</strong>
-                                        <p>${text}</p>
-                                        <div class="mt-4 grid grid-cols-1 gap-4">
-                                            ${images.map(img => `<img src="data:image/jpeg;base64,${img}" class="w-full h-auto rounded-lg shadow">`).join("")}
-                                        </div>`;
-                                } else if (data.status === "error") {
-                                    resultsDiv.innerHTML = "<strong>Ошибка:</strong> " + data.results;
-                                } else {
-                                    setTimeout(() => checkResults(taskId), 2000);
-                                }
-                            })
-                            .catch(error => console.error("Ошибка при получении результатов:", error));
+            <script>
+                async function checkResults(taskId) {
+                    const resultsDiv = document.getElementById("results");
+                    const containerDiv = document.getElementById("container");
+                    try {
+                        const response = await fetch(`/get-results/${taskId}`);
+                        const data = await response.json();
+
+                        if (data.status === "completed") {
+                            const { text, images } = data.results || { text: '', images: [] };
+                            if (images.length > 0) {
+                                containerDiv.classList.remove('max-w-4xl');
+                                containerDiv.classList.add('max-w-6xl');
+                            }
+                            resultsDiv.innerHTML = `
+                                <strong class="text-lg font-semibold">Результаты обработки:</strong>
+                                <div class="mt-2 text-gray-700">
+                                    <span id="text-content" class="max-h-12 overflow-hidden">${text}</span>
+                                    ${text.length > 50 ? `<button id="toggle-spoiler" class="text-indigo-600 hover:underline mt-2" onclick="toggleSpoiler()">Показать больше</button>` : ''}
+                                </div>
+                                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    ${images.map(img => `
+                                        <div class="relative group">
+                                            <img src="data:image/jpeg;base64,${img}" class="w-full h-auto rounded-lg shadow-lg transition-transform transform group-hover:scale-105 cursor-pointer" alt="Изображение нарушения" style="max-height: 300px; object-fit: cover;" onclick="openFullScreen('${img}')">
+                                            <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <span class="text-white font-semibold text-lg">Нарушение</span>
+                                            </div>
+                                        </div>
+                                    `).join("")}
+                                </div>
+                            `;
+                        } else if (data.status === "error") {
+                            resultsDiv.innerHTML = `<strong>Ошибка:</strong> ${data.results}`;
+                        } else {
+                            setTimeout(() => checkResults(taskId), 2000);
+                        }
+                    } catch (error) {
+                        console.error("Ошибка при получении результатов:", error);
                     }
+                }
 
-                    {% if message.task_id %}
-                        checkResults("{{ message.task_id }}");
-                    {% endif %}
-                </script>
+                function toggleSpoiler() {
+                    const textContent = document.getElementById("text-content");
+                    const toggleButton = document.getElementById("toggle-spoiler");
+                    const isSpoilerVisible = textContent.style.maxHeight === "none";
+
+                    textContent.style.maxHeight = isSpoilerVisible ? "50px" : "none";
+                    toggleButton.innerText = isSpoilerVisible ? "Показать больше" : "Скрыть";
+                }
+
+                function openFullScreen(image) {
+                    const fullScreenDiv = document.createElement('div');
+                    fullScreenDiv.style.position = 'fixed';
+                    fullScreenDiv.style.top = 0;
+                    fullScreenDiv.style.left = 0;
+                    fullScreenDiv.style.width = '100%';
+                    fullScreenDiv.style.height = '100%';
+                    fullScreenDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                    fullScreenDiv.style.display = 'flex';
+                    fullScreenDiv.style.alignItems = 'center';
+                    fullScreenDiv.style.justifyContent = 'center';
+                    fullScreenDiv.style.zIndex = 1000;
+
+                    const img = document.createElement('img');
+                    img.src = `data:image/jpeg;base64,${image}`;
+                    img.style.maxWidth = '90%';
+                    img.style.maxHeight = '90%';
+                    img.style.borderRadius = '8px';
+
+                    fullScreenDiv.appendChild(img);
+                    fullScreenDiv.onclick = () => document.body.removeChild(fullScreenDiv);
+                    document.body.appendChild(fullScreenDiv);
+                }
+
+                {% if message.task_id %}
+                    checkResults("{{ message.task_id }}");
+                {% endif %}
+            </script>
             {% endif %}
-        {% endif %}
+            {% endif %}
 
-        <form action="/upload-video" method="post" enctype="multipart/form-data" class="flex flex-col space-y-4 mt-4">
-            <input
-                type="file"
-                name="video"
-                required
-                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-
-            <button
-                type="submit"
-                class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+            <form
+                action="/upload-video"
+                method="post"
+                enctype="multipart/form-data"
+                class="flex flex-col space-y-4 mt-4"
             >
-                Загрузить и обработать видео
-            </button>
-        </form>
-    </div>
-</body>
+                <input
+                    type="file"
+                    name="video"
+                    required
+                    class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+
+                <button
+                    type="submit"
+                    class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+                >
+                    Загрузить и обработать видео
+                </button>
+            </form>
+        </div>
+    </body>
 </html>
