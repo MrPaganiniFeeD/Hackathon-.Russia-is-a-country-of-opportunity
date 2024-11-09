@@ -16,6 +16,42 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
+def img_detect_red_circle(image):
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_red1 = np.array([0, 100, 100])  # Нижняя граница первого диапазона
+    upper_red1 = np.array([10, 255, 255])  # Верхняя граница первого диапазона
+
+    lower_red2 = np.array([160, 150, 150])  # Нижняя граница второго диапазона
+    upper_red2 = np.array([180, 255, 255])  # Верхняя граница второго диапазона
+
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    red_mask = cv2.bitwise_or(mask1, mask2)
+
+    blurred = cv2.GaussianBlur(red_mask, (9, 9), 2)
+
+    circles = cv2.HoughCircles(
+        blurred,
+        cv2.HOUGH_GRADIENT,
+        dp=1.2,
+        minDist=200,
+        param1=10,
+        param2=15,
+        minRadius=10,
+        maxRadius=50
+    )
+
+    if circles is not None:
+        circles = np.round(circles[0, :]).astype("int")
+        for (x, y, r) in circles:
+            cv2.circle(image, (x, y), r, (0, 255, 0), 4)
+            cv2.circle(image, (x, y), 2, (0, 255, 255), 3)
+
+    return image
+
+
 def img_detect_color(image, show=False):
     """
     Функция для выделения светлых (приблизительно белых) областей на изображении.
