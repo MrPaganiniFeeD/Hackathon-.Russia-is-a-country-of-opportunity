@@ -53,7 +53,7 @@ def img_detect_color(image, show=False):
     """
     color_select = np.copy(image)
     thresholds = (
-        (image[:, :, 0] < 130) | (image[:, :, 1] < 130) | (image[:, :, 2] < 120)
+        (image[:, :, 0] < 150) | (image[:, :, 1] < 150) | (image[:, :, 2] < 140)
     )
     color_select[thresholds] = [0, 0, 0]
 
@@ -102,9 +102,8 @@ def lines_detect(image, show=False):
     """
     Обнаружение линий на изображении.
     """
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    edges = cv2.Canny(blur, 30, 100)
+    median = cv2.medianBlur(image, 5)
+    edges = cv2.Canny(median, 30, 100)
 
     if show:
         plt.imshow(edges, cmap="gray")
@@ -119,7 +118,7 @@ def detect_road_marking(base_image, image, show=False):
     Обнаружение дорожной разметки на изображении.
     """
     lines = cv2.HoughLinesP(
-        image, rho=1, theta=np.pi / 180, threshold=65, minLineLength=60, maxLineGap=50
+        image, rho=1, theta=np.pi / 180, threshold=65, minLineLength=100, maxLineGap=50
     )
 
     if show:
