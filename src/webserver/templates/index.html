@@ -36,17 +36,12 @@
                         const data = await response.json();
 
                         if (data.status === "completed") {
-                            const { text, images } = data.results || { text: '', images: [] };
+                            const { images } = data.results || { images: [] };
                             if (images.length > 0) {
                                 containerDiv.classList.remove('max-w-4xl');
                                 containerDiv.classList.add('max-w-6xl');
                             }
                             resultsDiv.innerHTML = `
-                                <strong class="text-lg font-semibold">Результаты обработки:</strong>
-                                <div class="mt-2 text-gray-700">
-                                    <span id="text-content" class="max-h-12 overflow-hidden">${text}</span>
-                                    ${text.length > 50 ? `<button id="toggle-spoiler" class="text-indigo-600 hover:underline mt-2" onclick="toggleSpoiler()">Показать больше</button>` : ''}
-                                </div>
                                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                     ${images.map(img => `
                                         <div class="relative group">
@@ -66,15 +61,6 @@
                     } catch (error) {
                         console.error("Ошибка при получении результатов:", error);
                     }
-                }
-
-                function toggleSpoiler() {
-                    const textContent = document.getElementById("text-content");
-                    const toggleButton = document.getElementById("toggle-spoiler");
-                    const isSpoilerVisible = textContent.style.maxHeight === "none";
-
-                    textContent.style.maxHeight = isSpoilerVisible ? "50px" : "none";
-                    toggleButton.innerText = isSpoilerVisible ? "Показать больше" : "Скрыть";
                 }
 
                 function openFullScreen(image) {
