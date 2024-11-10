@@ -2,6 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import pytesseract
 
 
 def detection_task(video_path) -> tuple[str, list]:
@@ -12,7 +13,6 @@ def detection_task(video_path) -> tuple[str, list]:
 
 
 def img_detect_red_circle(image):
-
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     lower_red1 = np.array([0, 100, 100])  # Нижняя граница первого диапазона
@@ -53,7 +53,7 @@ def img_detect_color(image, show=False):
     """
     color_select = np.copy(image)
     thresholds = (
-        (image[:, :, 0] < 150) | (image[:, :, 1] < 150) | (image[:, :, 2] < 140)
+            (image[:, :, 0] < 150) | (image[:, :, 1] < 150) | (image[:, :, 2] < 140)
     )
     color_select[thresholds] = [0, 0, 0]
 
@@ -63,6 +63,48 @@ def img_detect_color(image, show=False):
         plt.show()
 
     return color_select
+
+
+# Укажите путь к исполняемому файлу tesseract, если это необходимо
+def image_detection_bus_line(image):
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+    # Загрузка изображения
+    base_image = image
+
+    # Шаг 1: Преобразование в оттенки серого
+
+    # Шаг 2: Усиление контраста
+    image = img_detect_color(image, show=True)
+    blurred = cv2.GaussianBlur(image, (5, 5), 0)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Шаг 3: Применение пороговой бинаризации
+    _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    median = cv2.medianBlur(binary, 5)
+
+    kernel = np.ones((3, 3), np.uint8)
+    processed_image = cv2.morphologyEx(median, cv2.MORPH_CLOSE, kernel)
+
+    custom_config = r'--oem 3 --psm 8'
+
+    # Распознавание текста
+    recognized_text = pytesseract.image_to_data(processed_image, output_type=pytesseract.Output.DICT,
+                                                config=custom_config)
+
+    # Вывод распознанного текста
+    print("Распознанный текст:", recognized_text["left"])
+    n_boxes = len(recognized_text['level'])
+    for i in range(n_boxes):
+        print(recognized_text['text'][i])
+        if recognized_text['text'][i].lower() == 'a':
+            print("YEYS")
+            (x, y, w, h) = (recognized_text['left'][i], recognized_text['top'][i], recognized_text['width'][i],
+                            recognized_text['height'][i])
+            return (x, y, w, h)
+
+    # Показать промежуточный результат (если необходимо)
+    return (0, 0, 0, 0)
 
 
 def mask_area_on_image(image, show=False):
@@ -154,7 +196,7 @@ def does_line_intersect_zone(x1, y1, x2, y2, zone_start, zone_end, height):
     y_end = (-A * zone_end - C) / B if B != 0 else None
 
     return (y_start is not None and 0 <= y_start <= height) or (
-        y_end is not None and 0 <= y_end <= height
+            y_end is not None and 0 <= y_end <= height
     )
 
 
@@ -172,7 +214,7 @@ def does_center_intersect_line_center(x1, y1, x2, y2, image_center_x):
 
 
 def line_crossing_check(
-    lines, image, min_len_line=60, ignore_horizontal=True, verbose=False
+        lines, image, min_len_line=60, ignore_horizontal=True, verbose=False
 ):
     """
     Проверка, пересекает ли линия центральную часть изображения.
