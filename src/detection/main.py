@@ -2,6 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import pytesseract
 
 
 def detection_task(video_path) -> tuple[str, list]:
@@ -11,13 +12,48 @@ def detection_task(video_path) -> tuple[str, list]:
     return result_analysis, violation_frames
 
 
+def img_detect_red_circle(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_red1 = np.array([0, 100, 100])  # Нижняя граница первого диапазона
+    upper_red1 = np.array([10, 255, 255])  # Верхняя граница первого диапазона
+
+    lower_red2 = np.array([160, 150, 150])  # Нижняя граница второго диапазона
+    upper_red2 = np.array([180, 255, 255])  # Верхняя граница второго диапазона
+
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    red_mask = cv2.bitwise_or(mask1, mask2)
+
+    blurred = cv2.GaussianBlur(red_mask, (9, 9), 2)
+
+    circles = cv2.HoughCircles(
+        blurred,
+        cv2.HOUGH_GRADIENT,
+        dp=1.2,
+        minDist=200,
+        param1=10,
+        param2=15,
+        minRadius=10,
+        maxRadius=50
+    )
+
+    if circles is not None:
+        circles = np.round(circles[0, :]).astype("int")
+        for (x, y, r) in circles:
+            cv2.circle(image, (x, y), r, (0, 255, 0), 4)
+            cv2.circle(image, (x, y), 2, (0, 255, 255), 3)
+
+    return image
+
+
 def img_detect_color(image, show=False):
     """
     Выделение светлых областей на изображении.
     """
     color_select = np.copy(image)
     thresholds = (
-        (image[:, :, 0] < 130) | (image[:, :, 1] < 130) | (image[:, :, 2] < 120)
+            (image[:, :, 0] < 150) | (image[:, :, 1] < 150) | (image[:, :, 2] < 140)
     )
     color_select[thresholds] = [0, 0, 0]
 
@@ -27,6 +63,48 @@ def img_detect_color(image, show=False):
         plt.show()
 
     return color_select
+
+
+# Укажите путь к исполняемому файлу tesseract, если это необходимо
+def image_detection_bus_line(image):
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+    # Загрузка изображения
+    base_image = image
+
+    # Шаг 1: Преобразование в оттенки серого
+
+    # Шаг 2: Усиление контраста
+    image = img_detect_color(image, show=True)
+    blurred = cv2.GaussianBlur(image, (5, 5), 0)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Шаг 3: Применение пороговой бинаризации
+    _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    median = cv2.medianBlur(binary, 5)
+
+    kernel = np.ones((3, 3), np.uint8)
+    processed_image = cv2.morphologyEx(median, cv2.MORPH_CLOSE, kernel)
+
+    custom_config = r'--oem 3 --psm 8'
+
+    # Распознавание текста
+    recognized_text = pytesseract.image_to_data(processed_image, output_type=pytesseract.Output.DICT,
+                                                config=custom_config)
+
+    # Вывод распознанного текста
+    print("Распознанный текст:", recognized_text["left"])
+    n_boxes = len(recognized_text['level'])
+    for i in range(n_boxes):
+        print(recognized_text['text'][i])
+        if recognized_text['text'][i].lower() == 'a':
+            print("YEYS")
+            (x, y, w, h) = (recognized_text['left'][i], recognized_text['top'][i], recognized_text['width'][i],
+                            recognized_text['height'][i])
+            return (x, y, w, h)
+
+    # Показать промежуточный результат (если необходимо)
+    return (0, 0, 0, 0)
 
 
 def mask_area_on_image(image, show=False):
@@ -66,9 +144,8 @@ def lines_detect(image, show=False):
     """
     Обнаружение линий на изображении.
     """
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    edges = cv2.Canny(blur, 30, 100)
+    median = cv2.medianBlur(image, 5)
+    edges = cv2.Canny(median, 30, 100)
 
     if show:
         plt.imshow(edges, cmap="gray")
@@ -83,7 +160,7 @@ def detect_road_marking(base_image, image, show=False):
     Обнаружение дорожной разметки на изображении.
     """
     lines = cv2.HoughLinesP(
-        image, rho=1, theta=np.pi / 180, threshold=65, minLineLength=60, maxLineGap=50
+        image, rho=1, theta=np.pi / 180, threshold=65, minLineLength=100, maxLineGap=50
     )
 
     if show:
@@ -119,7 +196,7 @@ def does_line_intersect_zone(x1, y1, x2, y2, zone_start, zone_end, height):
     y_end = (-A * zone_end - C) / B if B != 0 else None
 
     return (y_start is not None and 0 <= y_start <= height) or (
-        y_end is not None and 0 <= y_end <= height
+            y_end is not None and 0 <= y_end <= height
     )
 
 
@@ -137,7 +214,7 @@ def does_center_intersect_line_center(x1, y1, x2, y2, image_center_x):
 
 
 def line_crossing_check(
-    lines, image, min_len_line=60, ignore_horizontal=True, verbose=False
+        lines, image, min_len_line=60, ignore_horizontal=True, verbose=False
 ):
     """
     Проверка, пересекает ли линия центральную часть изображения.
@@ -236,6 +313,9 @@ def main_analise(video_path, frames_to_take=50, show=False, debug_sec=[]):
     cv2.destroyAllWindows()
     return [result_analysis, violation_frames]
 
+
+if __name__ == '__main__':
+    print("Hello World")
 
 if __name__ == "__main__":
     video_path = r"D:\code\hackathons\train РЖД ПДД\Hackathon-.Russia-is-a-country-of-opportunity\videos\akn00006_fqGg6dtL.mov"
