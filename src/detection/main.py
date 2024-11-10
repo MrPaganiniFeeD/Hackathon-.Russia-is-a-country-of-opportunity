@@ -8,7 +8,7 @@ import pytesseract
 def detection_task(video_path) -> tuple[str, list]:
     result_analysis, violation_frames = main_analise(
         video_path, frames_to_take=500, show=False, debug_sec=[]
-    )
+    ) 
     return result_analysis, violation_frames
 
 
